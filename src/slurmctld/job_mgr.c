@@ -5481,8 +5481,16 @@ void job_time_limit(void)
 				(void) job_signal(job_ptr->job_id,
 						  job_ptr->warn_signal, 0, 0,
 						  false);
-				job_ptr->warn_signal = 0;
-				job_ptr->warn_time = 0;
+				/* If warning signal is disabled after it was
+				 * sent once, then the job will not receive
+				 * any time limit warning if it gets requeued.
+				 * The only drawback of not disabling the
+				 * warning signal is that the job might get 
+				 * multiple warning signals if it takes
+				 * more time than PERIODIC_TIMEOUT to quit
+				 * after receiving the first warning. */
+				/* job_ptr->warn_signal = 0; */
+				/* job_ptr->warn_time = 0; */
 			}
 		}
 
