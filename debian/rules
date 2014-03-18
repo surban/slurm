@@ -218,7 +218,7 @@ binary-common:
 	dh_installdebconf
 	dh_installman
 	dh_compress -X.pdf -X.example
-	dh_strip
+#	dh_strip
 	dh_fixperms
 	dh_perl
 	dh_makeshlibs
