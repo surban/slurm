@@ -17,3 +17,5 @@ src/common/global_defaults.c
 contribs/arrayrun/Makefile
 contribs/cray/Makefile
 contribs/lua/Makefile
+slurm/contribs/mic/Makefile
+slurm/contribs/pmi2/Makefile
