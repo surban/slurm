@@ -1,0 +1,3 @@
+debian/slurm-resume.sh
+debian/slurm-suspend.sh
+debian/slurm.conf.simple

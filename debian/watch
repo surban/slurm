@@ -1,0 +1,2 @@
+version=3
+http://www.schedmd.com/download/latest/slurm-(\d{1,2}.\d{1,2}.\d{1,2})\.tar\.bz2

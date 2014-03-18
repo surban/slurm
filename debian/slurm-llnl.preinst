@@ -1,0 +1,181 @@
+#!/bin/sh
+# preinst script for slurm-llnl
+#
+# see: dh_installdeb(1)
+
+set -e
+
+# summary of how this script can be called:
+#        * <new-preinst> `install'
+#        * <new-preinst> `install' <old-version>
+#        * <new-preinst> `upgrade' <old-version>
+#        * <old-preinst> `abort-upgrade' <new-version>
+#
+# for details, see http://www.debian.org/doc/debian-policy/ or
+# the debian-policy package
+
+case "$1" in
+    install)
+      if [ $(id -u slurm 2>/dev/null) ]; then
+        SLURMUID=$(id -u slurm 2>/dev/null)
+        SLURMGID=$(id -g slurm 2>/dev/null)
+        if [ "$SLURMUID" != "64030" ] || [ "$SLURMGID" != "64030" ] ; then
+          deluser --quiet slurm
+          adduser --quiet --system --group --uid 64030 --no-create-home slurm
+        fi
+      else
+        adduser --quiet --system --group --uid 64030 --no-create-home slurm
+      fi
+    ;;
+
+    upgrade)
+      if [ $(id -u slurm 2>/dev/null) ]; then
+        SLURMUID=$(id -u slurm 2>/dev/null)
+        SLURMGID=$(id -g slurm 2>/dev/null)
+        if [ "$SLURMUID" != "64030" ] || [ "$SLURMGID" != "64030" ] ; then
+          deluser --quiet slurm
+          adduser --quiet --system --group --uid 64030 --no-create-home slurm
+        fi
+      else
+        adduser --quiet --system --group --uid 64030 --no-create-home slurm
+      fi
+      if [ -e "$2" ] ; then 
+        exit 0
+      fi
+
+      # Check for a major release upgrade
+      OLDMAJREL=$(echo $2 | sed "s/\..*//")
+
+      # Cancel all running and pending jobs during a major upgrade
+      if [ "${OLDMAJREL}" = "1" ] ; then
+	# Waiting for the slurm daemons to stop sometimes they hangs a little
+	RETRY=0;
+        while [ "${RETRY}" != "8" ] ; do
+          if [ -z "$(pgrep slurmd)" ] && \
+             [ -z "$(pgrep slurmctld)" ] ; then
+               break
+          fi
+          RETRY=$((${RETRY}+1))
+          sleep 2
+        done
+	# Daemons were not stopped properly exiting upgrade
+        if [ -n "$(pgrep slurmd)" ] || \
+           [ -n "$(pgrep slurmctld)" ] ; then
+		echo Couldn\'t stop daemons properly, aborting ... 
+		exit 1
+	fi
+        if [ -x "/etc/init.d/slurm-llnl" ] \
+          && [ -e "/etc/slurm-llnl/slurm.conf" ] ; then
+          if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+            invoke-rc.d slurm-llnl start 2>/dev/null 1>&2 || exit $?
+          else
+            /etc/init.d/slurm-llnl start 2>/dev/null 1>&2 || exit $?
+          fi
+          if [ -e /var/run/slurm-llnl/slurmctld.pid ] ; then
+            scancel --state=pending 
+            scancel --state=running
+          fi
+          if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+            invoke-rc.d slurm-llnl stop 2>/dev/null 1>&2 || exit $?
+          else
+            /etc/init.d/slurm-llnl stop 2>/dev/null 1>&2 || exit $?
+          fi
+        fi
+	# Waiting again for the slurm daemons to stop
+	RETRY=0;
+        while [ "${RETRY}" != "8" ] ; do
+          if [ -z "$(pgrep slurmd)" ] && \
+             [ -z "$(pgrep slurmctld)" ] ; then
+               break
+          fi
+          RETRY=$((${RETRY}+1))
+          sleep 2
+        done
+	# Daemons were not stopped properly exiting upgrade
+        if [ -n "$(pgrep slurmd)" ] || \
+           [ -n "$(pgrep slurmctld)" ] ; then
+		echo Couldn\'t stop daemons properly, aborting ... 
+		exit 1
+	fi
+      fi
+
+      # Cheking if this host running a slurmd daemon
+      if [ -n "$(scontrol show daemons 2>/dev/null|grep -w slurmd)" ] ; then
+        # Checking if spool location is /var/run/slurm-llnl/slurmd
+        SPOOLDIRLOCATION=$(grep SlurmdSpoolDir /etc/slurm-llnl/slurm.conf \
+                           | grep -v "^ *#")
+        SPOOLDIRLOCATION=${SPOOLDIRLOCATION##*=}
+        SPOOLDIRLOCATION=${SPOOLDIRLOCATION%#*}
+
+	# Erasing old state files
+        if [ "${OLDMAJREL}" = "1" ] ; then
+          rm -rf ${SPOOLDIRLOCATION}/*
+        fi
+
+        if [ "$SPOOLDIRLOCATION" = "/var/run/slurm-llnl/slurmd" ] ; then
+          # Checking if /var/run/slurm-llnl/slurmd is already a link
+          if ! [ -L /var/run/slurm-llnl/slurmd ] ; then
+            # Checking if /var/run/slurm-llnl is a link
+            if ! [ -L /var/run/slurm-llnl ] ; then
+              # Removing old spooldir location?
+              if [ "$OLDMAJREL" != "1" ] ; then
+                rm -rf /var/run/slurm-llnl/slurmd
+              fi
+            fi
+          fi
+        else
+          # Removing old links if the configuration is updated
+          if [ -L /var/run/slurm-llnl/slurmd ] ; then
+            rm -f /var/run/slurm-llnl/slurmd
+          fi
+        fi
+      fi
+
+      # Cheking if this host running a slurmctld daemon
+      if [ -n "$(scontrol show daemons 2>/dev/null|grep -w slurmctld)" ] ; then
+        # Checking if state location is /var/run/slurm-llnl/slurmctld
+        SAVESTATELOCATION=$(grep StateSaveLocation /etc/slurm-llnl/slurm.conf \
+                           | grep -v "^ *#")
+        SAVESTATELOCATION=${SAVESTATELOCATION##*=}
+        SAVESTATELOCATION=${SAVESTATELOCATION%#*}
+
+	# Erasing old state files
+        if [ "${OLDMAJREL}" = "1" ] ; then
+          rm -rf ${SAVESTATELOCATION}/*
+        fi
+
+        if [ "${SAVESTATE}" = "/var/run/slurm-llnl/slurmctld" ] ; then
+          # Checking if /var/run/slurm-llnl/slurmd is already a link
+          if ! [ -L /var/run/slurm-llnl/slurmctld ] ; then
+            # Checking if /var/run/slurm-llnl is a link
+            if ! [ -L /var/run/slurm-llnl ] ; then
+              # Deleting /var/run/slurm-llnl/slurmd directory
+              rm -rf /var/run/slurm-llnl/slurmctld
+            fi
+          fi
+        else
+          # Removing old links if the configuration is updated
+          if [ -L /var/run/slurm-llnl/slurmctld ] ; then
+            rm -f /var/run/slurm-llnl/slurmctld
+          fi
+        fi
+      fi
+      ;;
+
+    abort-upgrade)
+    ;;
+
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+# dh_installdeb will replace this with shell code automatically
+# generated by other debhelper scripts.
+
+#DEBHELPER#
+
+exit 0
+
+

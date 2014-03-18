@@ -1,0 +1,239 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+#
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+#
+# Modified to make a template file for a multi-binary package with separated
+# build-arch and build-indep targets  by Bill Allombert 2001
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CFLAGS = `dpkg-buildflags --get CFLAGS`
+CFLAGS += -Wall
+LDFLAGS = `dpkg-buildflags --get LDFLAGS`
+CPPFLAGS = `dpkg-buildflags --get CPPFLAGS`
+
+config.status: configure
+	dh_testdir
+ifneq "$(wildcard /usr/share/misc/config.sub)" ""
+	cp -f /usr/share/misc/config.sub config.sub
+endif
+ifneq "$(wildcard /usr/share/misc/config.guess)" ""
+	cp -f /usr/share/misc/config.guess config.guess
+endif
+	# Add here commands to configure the package.
+	CFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc/slurm-llnl --with-munge --localstatedir=/var/run/slurm-llnl --without-blcr --libexecdir=/usr/share --enable-pam --without-rpath
+
+
+
+#Architecture 
+build: build-arch build-indep
+
+build-arch: build-arch-stamp
+build-arch-stamp:  config.status
+
+	# Add here commands to compile the arch part of the package.
+	#$(MAKE) 
+	touch build-arch-stamp
+
+build-indep: build-indep-stamp
+build-indep-stamp:  config.status
+
+	# Add here commands to compile the indep part of the package.
+	#$(MAKE) doc
+	touch build-indep-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-arch-stamp build-indep-stamp #CONFIGURE-STAMP#
+
+	# Add here commands to clean up after the build process.
+	[ ! -f contribs/perlapi/Makefile ] || $(MAKE) -C contribs/perlapi distclean
+	[ ! -f contribs/torque/Makefile ] || $(MAKE) -C contribs/torque distclean
+	[ ! -f contribs/pam/Makefile ] || $(MAKE) -C contribs/pam distclean
+	[ ! -f Makefile ] || $(MAKE) distclean
+
+	  rm -rf .pc contribs/pam/.deps \
+		src/plugins/accounting_storage/common/.deps \
+		src/plugins/accounting_storage/common/.libs
+	  rm -f config.sub
+	  rm -f config.guess
+	  dh_clean
+
+  install: install-indep install-arch
+  install-indep:
+	dh_testdir
+	dh_testroot
+	dh_prep -i 
+	dh_installdirs -i
+	$(MAKE) -C doc/html install DESTDIR=$(CURDIR)/debian/slurm-llnl-doc
+	dh_install -pslurm-llnl-doc debian/slurm-llnl-doc/usr/share/doc/slurm-[0-9]*/html usr/share/doc/slurm-llnl-doc
+	#Install documenation packages file
+	rm -rf debian/slurm-llnl-doc/usr/share/doc/slurm-[0-9]*
+
+	$(MAKE) -C contribs/torque install DESTDIR=$(CURDIR)/debian/slurm-llnl-torque
+	rm -f debian/slurm-llnl-torque/usr/bin/mpiexec
+
+	for i in debian/slurm-llnl-torque/usr/bin/*; do \
+		pod2man $$i > debian/slurm-llnl-torque/usr/share/man/man1/$$(basename $$i).1; \
+	done
+
+	dh_install -i
+
+  install-arch:
+	dh_testdir
+	dh_testroot
+	dh_prep -s 
+	dh_installdirs -s
+
+	# Add here commands to install the arch part of the package into 
+	# debian/tmp.
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/slurm-llnl
+	sed -i "s/\-shared/-shared -lc/" contribs/pam/Makefile
+	$(MAKE) -C contribs/pam install DESTDIR=$(CURDIR)/debian/slurm-llnl
+	sed -i "/dependency_libs/ s/'.*'/''/" `find . -name '*.la'`
+	rm -fr debian/slurm-llnl/usr/lib/slurm/src
+	rm -f  debian/slurm-llnl/usr/sbin/slurm_epilog
+	rm -f  debian/slurm-llnl/usr/sbin/slurm_prolog
+	#rmdir  debian/slurm-llnl/usr/share/slurm
+	dh_install -pslurm-llnl debian/slurm-llnl-configurator.html usr/share/doc/slurm-llnl
+	dh_install -pslurm-llnl debian/slurm-llnl-configurator.easy.html usr/share/doc/slurm-llnl
+	rm -rf debian/slurm-llnl/usr/share/doc/slurm-[0-9]*
+
+	# pmi packages
+	dh_install -plibpmi0 debian/slurm-llnl/usr/lib/libpmi.so.* usr/lib
+	dh_install -plibpmi0-dev debian/slurm-llnl/usr/lib/libpmi.a usr/lib
+	dh_install -plibpmi0-dev debian/slurm-llnl/usr/lib/libpmi.la usr/lib
+	dh_install -plibpmi0-dev debian/slurm-llnl/usr/lib/libpmi*.so usr/lib
+	dh_install -plibpmi0-dev debian/slurm-llnl/usr/include/slurm/pmi.h usr/include/slurm
+	rm -f debian/slurm-llnl/usr/include/slurm/pmi.h
+	rm -f debian/slurm-llnl/usr/lib/libpmi*
+
+	# libslurmdb packages
+	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/include/slurm/slurmdb.h usr/include/slurm
+	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.a usr/lib
+	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.la usr/lib
+	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.so usr/lib
+	dh_install -plibslurmdb25 debian/slurm-llnl/usr/lib/libslurmdb.so.* usr/lib
+	rm -f debian/slurm-llnl/usr/include/slurm/slurmdb.h
+	rm -f debian/slurm-llnl/usr/lib/libslurmdb.a
+	rm -f debian/slurm-llnl/usr/lib/libslurmdb.la
+	rm -f debian/slurm-llnl/usr/lib/libslurmdb.so
+	rm -f debian/slurm-llnl/usr/lib/libslurmdb.so.*
+
+	# libslurm packages
+	dh_install -plibslurm-dev debian/slurm-llnl/usr/include/slurm/* usr/include/slurm
+	dh_install -plibslurm-dev debian/slurm-llnl/usr/lib/*.a usr/lib
+	dh_install -plibslurm-dev debian/slurm-llnl/usr/lib/lib*.la usr/lib
+	dh_install -plibslurm-dev debian/slurm-llnl/usr/lib/lib*.so usr/lib
+	dh_installman -plibslurm-dev debian/slurm-llnl/usr/share/man/man3/*
+	dh_install -plibslurm25 debian/slurm-llnl/usr/lib/libslurm.so.* usr/lib
+	#LIBSLURM = `ls -v debian/slurm-llnl/usr/lib/libslurm.so* | tail -1`
+	#ls -v debian/slurm-llnl/usr/lib/libslurm.so* | tail -1
+	#echo LIBSLURM is $(LIBSLURM)
+	rm -rf debian/slurm-llnl/usr/include
+	rm -f debian/slurm-llnl/usr/lib/*.a
+	rm -f debian/slurm-llnl/usr/lib/lib*.la
+	rm -f debian/slurm-llnl/usr/lib/lib*.so
+	rm -rf debian/slurm-llnl/usr/share/man/man3
+	rm -f debian/slurm-llnl/usr/lib/libslurm.so.*
+
+	#plugins packages
+	dh_install -pslurm-llnl-basic-plugins debian/slurm-llnl/usr/lib/slurm/*.so usr/lib/slurm
+	dh_install -pslurm-llnl-basic-plugins-dev debian/slurm-llnl/usr/lib/slurm/*.la usr/lib/slurm
+	dh_install -pslurm-llnl-basic-plugins-dev debian/slurm-llnl/usr/lib/slurm/*.a usr/lib/slurm
+	rm -rf debian/slurm-llnl/usr/lib/slurm
+	rm -rf debian/slurm-llnl/usr/share/doc/slurm-llnl-doc
+	rm -f debian/slurm-llnl/usr/share/man/man5/bluegene.conf.5
+	mv -f debian/slurm-llnl/usr/share/man/man1/slurm.1 \
+		debian/slurm-llnl/usr/share/man/man1/slurm-llnl.1
+	rm -f debian/slurm-llnl/usr/sbin/sfree
+
+	#sview package
+	dh_install -pslurm-llnl-sview debian/slurm-llnl/usr/bin/sview usr/bin
+	dh_installman -pslurm-llnl-sview debian/slurm-llnl/usr/share/man/man1/sview.1
+	rm -f debian/slurm-llnl/usr/bin/sview
+	rm -f debian/slurm-llnl/usr/share/man/man1/sview.1
+
+	#slurmdbd package
+	dh_install -pslurm-llnl-slurmdbd debian/slurm-llnl/usr/sbin/slurmdbd usr/sbin
+	dh_install -pslurm-llnl-slurmdbd debian/slurm-llnl/usr/bin/sacctmgr usr/bin
+	dh_install -pslurm-llnl-slurmdbd debian/slurm-llnl/usr/share/man/man8/slurmdbd.8 usr/share/man/man8
+	dh_install -pslurm-llnl-slurmdbd debian/slurm-llnl/usr/share/man/man5/slurmdbd.conf.5 usr/share/man/man5
+	dh_install -pslurm-llnl-slurmdbd debian/slurm-llnl/usr/share/man/man1/sacctmgr.1 usr/share/man/man1
+	rm -f debian/slurm-llnl/usr/sbin/slurmdbd
+	rm -f debian/slurm-llnl/usr/bin/sacctmgr
+	rm -f debian/slurm-llnl/usr/share/man/man8/slurmdbd.8
+	rm -f debian/slurm-llnl/usr/share/man/man5/slurmdbd.conf.5
+	rm -f debian/slurm-llnl/usr/share/man/man1/sacctmgr.1
+
+	rmdir debian/slurm-llnl/usr/lib
+
+	#libpam-slurm package
+	dh_install -plibpam-slurm debian/slurm-llnl/lib/security/pam_slurm.so lib/security
+	rm -rf debian/slurm-llnl/lib
+
+
+	# Perl
+	$(MAKE) -C contribs/perlapi install DESTDIR=$(CURDIR)/debian/libslurm-perl PERL_MM_OPT="INSTALLDIRS=vendor"
+
+	find debian/libslurm-perl -type f -name "*.so" | xargs chrpath -d
+
+	mv debian/libslurm-perl/usr/lib/perl5/Slurmdb.pm debian/libslurmdb-perl/usr/lib/perl5/
+	mv debian/libslurm-perl/usr/lib/perl5/auto/Slurmdb debian/libslurmdb-perl/usr/lib/perl5/auto
+	mv debian/libslurm-perl/usr/share/man/man3/Slurmdb.3pm debian/libslurmdb-perl/usr/share/man/man3
+
+	dh_install -s
+# Must not depend on anything. This is to be called by
+# binary-arch/binary-indep
+# in another 'make' thread.
+binary-common:
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs
+	dh_installdocs
+	dh_installexamples
+	install -m644 debian/slurm-llnl.lintian debian/slurm-llnl/usr/share/lintian/overrides/slurm-llnl
+	install -m644 debian/slurm-llnl-basic-plugins.lintian debian/slurm-llnl-basic-plugins/usr/share/lintian/overrides/slurm-llnl-basic-plugins
+#	dh_installexamples debian/slurm-resume.sh
+#	dh_installexamples debian/slurm-suspend.sh
+#	dh_installexamples debian/slurm.conf.simple
+#	dh_installexamples -pslurm-llnl-slurmdbd debian/slurmdbd.conf.simple
+	dh_installinit
+	dh_installlogrotate
+	dh_installdebconf
+	dh_installman
+	dh_compress -X.pdf -X.example
+	dh_strip
+	dh_fixperms
+	dh_perl
+	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+# Build architecture independant packages using the common target.
+binary-indep: build-indep install-indep
+	$(MAKE) -f debian/rules DH_OPTIONS=-i binary-common
+
+# Build architecture dependant packages using the common target.
+binary-arch: build-arch install-arch
+	$(MAKE) -f debian/rules DH_OPTIONS=-a binary-common
+
+binary: binary-arch binary-indep
+.PHONY: build clean binary-indep binary-arch binary install install-indep install-arch 

@@ -1,0 +1,48 @@
+Configuration Instruction
+=========================
+The default CryptoType to provide a digital signature on job step
+credentials is "crypto/munge". OpenSSL is no longer required by SLURM in
+the default configuration. If you choose to use OpenSSL cryptography you
+will need to create unique job credential keys for your site using the
+openssl command: a Job Credential Private Key and a Job Credential
+Public Certificate. The key must be available on the controllers while
+the certificate must be available on all the compute nodes.
+These keys are used by slurmctld to construct a job credential, which
+is sent to srun and then forwarded to slurmd to initiate job steps.
+
+You can create the certificate and the key with openssl as follow:
+
+openssl genrsa -out /etc/slurm-llnl/slurm.key 1024
+openssl rsa -in /etc/slurm-llnl/slurm.key -pubout -out \
+	/etc/slurm-llnl/slurm.cert
+
+You will also need a configuration file for your cluster that need to
+be stored under /etc/slurm-llnl/slurm.conf on every node.
+You can point your browser to
+file:///usr/share/doc/slurm-llnl/slurm-llnl-configurator.html
+for an automatic configuration tool.
+Please leave red fields untouched and change green field
+to fit your cluster configuration.
+
+You can also find a simple sample configuration that provides a
+control machine to run the Slurm's central management daemon and
+a single node for job execution under
+/usr/share/doc/slurm-llnl/examples/slurm.conf.simple.gz
+
+Openssl Key Vulnerability
+=========================
+In Debian Security Advisory 1571 (New openssl packages fix predictable
+random number generator), the Debian Security Team disclosed a
+vulnerability in the openssl package that makes many cryptographic keys
+that are used for authentication (e.g. through SSH) or signing (e.g. web
+server certificates) potentially vulnerable.
+The init.d script of the slurm-llnl package can detect this weakness by
+using an openssl keys blacklist.
+To fix this, first aptitude update && aptitude upgrade to install the
+new version of the openssl and libssl0.9.8 packages (the vulnerability
+is fixed in version 0.9.8c-4etch3 for etch and version 0.9.8g-9 for
+lenny/sid); then recreate your job credential keys as described in the
+Configuration Instruction section above.
+If you have generated the job credential keys with a prior version of
+openssl we strongly encourage you to recreate your keys even if the
+init script does not detect the vulnerability.
