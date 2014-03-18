@@ -128,7 +128,7 @@ clean:
 	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.a usr/lib
 	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.la usr/lib
 	dh_install -plibslurmdb-dev debian/slurm-llnl/usr/lib/libslurmdb.so usr/lib
-	dh_install -plibslurmdb25 debian/slurm-llnl/usr/lib/libslurmdb.so.* usr/lib
+	dh_install -plibslurmdb26 debian/slurm-llnl/usr/lib/libslurmdb.so.* usr/lib
 	rm -f debian/slurm-llnl/usr/include/slurm/slurmdb.h
 	rm -f debian/slurm-llnl/usr/lib/libslurmdb.a
 	rm -f debian/slurm-llnl/usr/lib/libslurmdb.la
@@ -141,7 +141,7 @@ clean:
 	dh_install -plibslurm-dev debian/slurm-llnl/usr/lib/lib*.la usr/lib
 	dh_install -plibslurm-dev debian/slurm-llnl/usr/lib/lib*.so usr/lib
 	dh_installman -plibslurm-dev debian/slurm-llnl/usr/share/man/man3/*
-	dh_install -plibslurm25 debian/slurm-llnl/usr/lib/libslurm.so.* usr/lib
+	dh_install -plibslurm26 debian/slurm-llnl/usr/lib/libslurm.so.* usr/lib
 	#LIBSLURM = `ls -v debian/slurm-llnl/usr/lib/libslurm.so* | tail -1`
 	#ls -v debian/slurm-llnl/usr/lib/libslurm.so* | tail -1
 	#echo LIBSLURM is $(LIBSLURM)
