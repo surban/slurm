@@ -6,6 +6,8 @@ Makefile.PL
 *.lo
 *.la
 
+config.guess
+config.sub
 config.h
 config.log
 config.status
