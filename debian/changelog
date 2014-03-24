@@ -1,3 +1,9 @@
+slurm-llnl (2.6.9-2) UNRELEASED; urgency=low
+
+  * Added LUA dependency
+
+ -- Sebastian Urban <surban@tum.de>  Sun, 23 Mar 2014 10:59:40 +0100
+
 slurm-llnl (2.6.9-1) UNRELEASED; urgency=low
 
   * New upstream relase
