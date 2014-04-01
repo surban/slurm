@@ -735,6 +735,9 @@ static int _attempt_backfill(void)
 		if (debug_flags & DEBUG_FLAG_BACKFILL)
 			info("backfill test for job %u", job_ptr->job_id);
 
+		info("738");
+		_dump_job_test(job_ptr, avail_bitmap);
+
 		slurmctld_diag_stats.bf_last_depth++;
 		already_counted = false;
 
@@ -760,6 +763,10 @@ static int _attempt_backfill(void)
 				continue;
 			}
 		}
+
+		info("767");
+		_dump_job_test(job_ptr, avail_bitmap);
+
 		if (max_backfill_job_per_user) {
 			for (j = 0; j < nuser; j++) {
 				if (job_ptr->user_id == uid[j]) {
@@ -803,6 +810,9 @@ static int _attempt_backfill(void)
 			}
 		}
 
+		info("813");
+		_dump_job_test(job_ptr, avail_bitmap);
+
 		if (((part_ptr->state_up & PARTITION_SCHED) == 0) ||
 		    (part_ptr->node_bitmap == NULL))
 		 	continue;
@@ -812,6 +822,9 @@ static int _attempt_backfill(void)
 		if ((!job_independent(job_ptr, 0)) ||
 		    (license_job_test(job_ptr, time(NULL)) != SLURM_SUCCESS))
 			continue;
+
+		info("826");
+		_dump_job_test(job_ptr, avail_bitmap);
 
 		/* Determine minimum and maximum node counts */
 		min_nodes = MAX(job_ptr->details->min_nodes,
@@ -830,6 +843,9 @@ static int _attempt_backfill(void)
 			/* job's min_nodes exceeds partition's max_nodes */
 			continue;
 		}
+
+		info("847");
+		_dump_job_test(job_ptr, avail_bitmap);
 
 		/* Determine job's expected completion time */
 		if (part_ptr->max_time == INFINITE)
@@ -852,6 +868,9 @@ static int _attempt_backfill(void)
 			time_limit = job_ptr->time_limit = 1;
 		else if (job_ptr->time_min && (job_ptr->time_min < time_limit))
 			time_limit = job_ptr->time_limit = job_ptr->time_min;
+
+		info("856");
+		_dump_job_test(job_ptr, avail_bitmap);
 
 		/* Determine impact of any resource reservations */
 		later_start = now;
@@ -895,6 +914,9 @@ static int _attempt_backfill(void)
 			job_test_count = 1;
 			START_TIMER;
 		}
+
+		info("899");
+		_dump_job_test(job_ptr, avail_bitmap);
 
 		FREE_NULL_BITMAP(avail_bitmap);
 		FREE_NULL_BITMAP(exc_core_bitmap);
@@ -940,6 +962,9 @@ static int _attempt_backfill(void)
 			bit_not(job_ptr->details->exc_node_bitmap);
 		}
 
+		info("942");
+		_dump_job_test(job_ptr, avail_bitmap);
+
 		/* Test if insufficient nodes remain OR
 		 *	required nodes missing OR
 		 *	nodes lack features */
@@ -957,6 +982,9 @@ static int _attempt_backfill(void)
 			job_ptr->start_time = sched_start + backfill_window;
 			continue;
 		}
+		
+		info("961");
+		_dump_job_test(job_ptr, avail_bitmap);
 
 		/* Identify nodes which are definitely off limits */
 		FREE_NULL_BITMAP(resv_bitmap);
